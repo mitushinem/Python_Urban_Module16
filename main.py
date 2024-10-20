@@ -1,9 +1,9 @@
-from xml.sax import parse
-
-from fastapi import FastAPI, Path
-from typing import Annotated
-
-app = FastAPI()
+# from xml.sax import parse
+#
+# from fastapi import FastAPI, Path
+# from typing import Annotated
+#
+# app = FastAPI()
 
 # @app.get("/")
 # async def welome() -> dict:
@@ -24,39 +24,100 @@ app = FastAPI()
 #     return {"User": username, "Age": age}
 
 
-messages_db = {'0': 'First post in FastAPI'}
+# messages_db = {'0': 'First post in FastAPI'}
+#
+#
+# @app.get('/')
+# async def get_all_messages() -> dict:
+#     return messages_db
+#
+#
+# @app.get('/message/{message_id}')
+# async def get_all_messages(message_id: str) -> dict:
+#     return messages_db[message_id]
+#
+#
+# @app.post('/message')
+# async def create_message(message: str) -> str:
+#     current_index = str(int(max(messages_db, key=int)) + 1)
+#     messages_db[current_index] = message
+#     return 'Message created'
+#
+#
+# @app.put('/message/{message_id}')
+# async def update_message(message_id: str, message: str) -> str:
+#     messages_db[message_id] = message
+#     return 'Message updated'
+#
+#
+# @app.delete('/message/{message_id}')
+# async def delete_message(message_id: str) -> str:
+#     messages_db.pop(message_id)
+#     return f'Message {message_id} deleted'
+#
+#
+# @app.delete('/')
+# async def delete_all_messages() -> str:
+#     messages_db.clear()
+#     return 'All messages deleted'
 
 
-@app.get('/')
-async def get_all_messages() -> dict:
+
+
+from fastapi import FastAPI, status, Body, HTTPException
+from pydantic import BaseModel
+from typing import List
+
+app = FastAPI()
+
+messages_db = []
+
+
+class Message(BaseModel):
+    id: int = None
+    text: str
+
+
+@app.get("/")
+def get_all_messages() -> List[Message]:
     return messages_db
 
 
-@app.get('/message/{message_id}')
-async def get_all_messages(message_id: str) -> dict:
-    return messages_db[message_id]
+@app.get(path="/message/{message_id}")
+def get_message(message_id: int) -> Message:
+    try:
+        return messages_db[message_id]
+    except IndexError:
+        raise HTTPException(status_code=404, detail="Message not found")
 
 
-@app.post('/message')
-async def create_message(message: str) -> str:
-    current_index = str(int(max(messages_db, key=int)) + 1)
-    messages_db[current_index] = message
-    return 'Message created'
+@app.post("/message")
+def create_message(message: Message) -> str:
+    message.id = len(messages_db)
+    messages_db.append(message)
+    return f"Message created!"
 
 
-@app.put('/message/{message_id}')
-async def update_message(message_id: str, message: str) -> str:
-    messages_db[message_id] = message
-    return 'Message updated'
+@app.put("/message/{message_id}")
+def update_message(message_id: int, message: str = Body()) -> str:
+    try:
+        edit_message = messages_db[message_id]
+        edit_message.text = message
+        return f"Message updated!"
+    except IndexError:
+        raise HTTPException(status_code=404, detail="Message not found")
 
 
-@app.delete('/message/{message_id}')
-async def delete_message(message_id: str) -> str:
-    messages_db.pop(message_id)
-    return f'Message {message_id} deleted'
+@app.delete("/message/{message_id}")
+def delete_message(message_id: int) -> str:
+    try:
+        messages_db.pop(message_id)
+        return f"Message ID={message_id} deleted!"
+    except IndexError:
+        raise HTTPException(status_code=404, detail="Message not found")
 
 
-@app.delete('/')
-async def delete_all_messages() -> str:
+@app.delete("/")
+def kill_message_all() -> str:
     messages_db.clear()
-    return 'All messages deleted'
+    return "All messages deleted!"
